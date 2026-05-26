@@ -39,6 +39,14 @@
             80% { opacity: 1; transform: translateY(0); }
             100% { opacity: 0; transform: translateY(-20px); }
         }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-15px); }
+            60% { transform: translateY(-7px); }
+        }
+        .score-bounce {
+            animation: bounce 0.5s;
+        }
         /* Estilos para a barra de rolagem horizontal */
         .scrolling-wrapper {
             -webkit-overflow-scrolling: touch; /* Rolagem suave em iOS */
@@ -57,11 +65,12 @@
 
         <!-- Área do Lixo e Pontuação -->
         <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8 flex justify-around items-center">
-            <div class="text-center">
+            <div class="text-center flex flex-col items-center">
                 <h2 class="text-xl font-semibold text-gray-700">Lixo</h2>
                 <div id="trash-container" class="mt-2 h-24 w-24 flex items-center justify-center">
                     <!-- O item de lixo aparecerá aqui -->
                 </div>
+                <p id="trash-name" class="mt-2 text-base font-semibold text-gray-600 h-6"></p>
             </div>
             <div class="text-center">
                 <h2 class="text-xl font-semibold text-gray-700">Pontuação</h2>
@@ -149,7 +158,7 @@
                 { id: 'banana', type: 'organico', content: '🍌', name: 'Casca de Banana' },
                 { id: 'copo-plastico', type: 'plastico', content: '🥤', name: 'Copo Plástico' },
                 { id: 'lata-aluminio', type: 'metal', content: '🥫', name: 'Lata de Alumínio' },
-                { id: 'clips', type: 'metal', content: '�', name: 'Clips de Metal' },
+                { id: 'clips', type: 'metal', content: '📎', name: 'Clips de Metal' },
                 { id: 'revista', type: 'papel', content: '📖', name: 'Revista' },
                 { id: 'ovo', type: 'organico', content: '🥚', name: 'Casca de Ovo' }
             ];
@@ -178,6 +187,7 @@
                 trashElement.dataset.type = currentTrashItem.type;
 
                 trashContainer.appendChild(trashElement);
+                document.getElementById('trash-name').textContent = currentTrashItem.name;
                 addDragListeners(trashElement);
             }
 
@@ -295,6 +305,10 @@
                     showFeedback('Ops! Tente de novo.', false);
                 }
                 scoreElement.textContent = score;
+                scoreElement.classList.add('score-bounce');
+                setTimeout(() => {
+                    scoreElement.classList.remove('score-bounce');
+                }, 500);
             }
 
             function showFeedback(message, isSuccess) {
