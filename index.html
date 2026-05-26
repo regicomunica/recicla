@@ -112,6 +112,45 @@
         </button>
     </main>
 
+    <!-- Modal do Quiz (Fase 3) -->
+    <div id="quiz-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl transform transition-all">
+            <h2 class="text-3xl font-bold text-indigo-700 mb-4">Quiz de Decomposição!</h2>
+            <p class="text-lg text-gray-600 mb-6">Você atingiu 200 pontos! Responda corretamente para avançar.</p>
+            <p id="quiz-question" class="text-2xl font-semibold text-gray-800 mb-8 h-20 flex items-center justify-center"></p>
+            <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Opções de resposta serão injetadas aqui -->
+            </div>
+            <p id="quiz-feedback" class="mt-6 text-xl font-bold h-8"></p>
+        </div>
+    </div>
+
+    <!-- Modal de Compartilhamento (Fase 4) -->
+    <div id="share-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl transform transition-all">
+            <h2 class="text-4xl font-bold text-yellow-500 mb-4">🎉 Parabéns, Mestre da Reciclagem! 🎉</h2>
+            <p class="text-lg text-gray-700 mb-6">Você completou todas as fases. Agora, sua missão é multiplicar o aprendizado e trazer mais pessoas para salvar o planeta!</p>
+
+            <div class="bg-yellow-50 rounded-xl p-6 mb-6 border border-yellow-200 text-left">
+                <h3 class="font-bold text-gray-800 mb-2">Seus próximos passos:</h3>
+                <ul class="list-disc list-inside text-gray-700 space-y-2">
+                    <li>Copie o link abaixo.</li>
+                    <li>Envie para 3 amigos no WhatsApp.</li>
+                    <li>Desafie-os a bater sua pontuação!</li>
+                </ul>
+            </div>
+
+            <button id="copy-link-button" class="w-full px-8 py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                <span>📋</span> Copiar Link do Jogo
+            </button>
+            <p id="copy-feedback" class="mt-4 text-green-600 font-semibold hidden">Link copiado com sucesso!</p>
+
+            <button id="play-again-button" class="mt-4 text-gray-500 underline hover:text-gray-800">
+                Voltar a jogar
+            </button>
+        </div>
+    </div>
+
     <!-- ================================================== -->
     <!-- ========= INÍCIO DO ESPAÇO PARA ANÚNCIO ========= -->
     <!-- ================================================== -->
@@ -163,6 +202,23 @@
                 { id: 'ovo', type: 'organico', content: '🥚', name: 'Casca de Ovo' }
             ];
 
+            const hardTrashItems = [
+                { id: 'caixa-pizza-suja', type: 'organico', content: '🍕', name: 'Caixa de Pizza Suja (engordurada)' },
+                { id: 'isopor', type: 'plastico', content: '🥡', name: 'Embalagem de Isopor' },
+                { id: 'papel-toalha-usado', type: 'organico', content: '🧻', name: 'Papel Toalha Usado' },
+                { id: 'esponja', type: 'organico', content: '🧽', name: 'Esponja de Cozinha Velha (lixo comum)' },
+                { id: 'espelho-quebrado', type: 'organico', content: '🪞', name: 'Espelho Quebrado (lixo comum/não reciclável normal)' },
+                { id: 'lampada', type: 'organico', content: '💡', name: 'Lâmpada Incandescente (lixo comum)' },
+                { id: 'tampinha', type: 'plastico', content: '🔵', name: 'Tampinha de Garrafa' }
+            ];
+
+            const quizQuestions = [
+                { question: 'Quanto tempo uma garrafa de plástico demora para se decompor?', options: ['10 anos', '100 anos', '400 anos', '1000 anos'], answer: '400 anos' },
+                { question: 'Quanto tempo o vidro demora para se decompor?', options: ['Indeterminado/Milhares de anos', '500 anos', '50 anos', '100 anos'], answer: 'Indeterminado/Milhares de anos' },
+                { question: 'Quanto tempo uma casca de maçã demora para se decompor?', options: ['1 dia', '1 a 2 meses', '1 ano', '10 anos'], answer: '1 a 2 meses' },
+                { question: 'Quanto tempo o papel demora para se decompor?', options: ['2 a 6 semanas', '6 meses', '1 ano', '10 anos'], answer: '2 a 6 semanas' }
+            ];
+
             const trashContainer = document.getElementById('trash-container');
             const scoreElement = document.getElementById('score');
             const bins = document.querySelectorAll('.bin');
@@ -176,8 +232,12 @@
 
             function generateNewTrashItem() {
                 trashContainer.innerHTML = '';
-                const randomIndex = Math.floor(Math.random() * trashItems.length);
-                currentTrashItem = trashItems[randomIndex];
+                let currentPool = trashItems;
+                if (score >= 100) {
+                    currentPool = trashItems.concat(hardTrashItems);
+                }
+                const randomIndex = Math.floor(Math.random() * currentPool.length);
+                currentTrashItem = currentPool[randomIndex];
 
                 const trashElement = document.createElement('div');
                 trashElement.id = 'current-trash';
@@ -295,11 +355,64 @@
                 return null;
             }
 
+            let currentQuizIndex = 0;
+            const quizModal = document.getElementById('quiz-modal');
+            const quizQuestionElement = document.getElementById('quiz-question');
+            const quizOptionsElement = document.getElementById('quiz-options');
+            const quizFeedbackElement = document.getElementById('quiz-feedback');
+
+            function startQuiz() {
+                currentQuizIndex = 0;
+                quizModal.classList.remove('hidden');
+                renderQuizQuestion();
+            }
+
+            function renderQuizQuestion() {
+                if (currentQuizIndex >= quizQuestions.length) {
+                    quizModal.classList.add('hidden');
+                    showSharePhase();
+                    return;
+                }
+
+                const q = quizQuestions[currentQuizIndex];
+                quizQuestionElement.textContent = q.question;
+                quizOptionsElement.innerHTML = '';
+                quizFeedbackElement.textContent = '';
+
+                q.options.forEach(option => {
+                    const btn = document.createElement('button');
+                    btn.className = 'px-4 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold rounded-xl transition-colors border border-indigo-300';
+                    btn.textContent = option;
+                    btn.onclick = () => handleQuizAnswer(option, q.answer);
+                    quizOptionsElement.appendChild(btn);
+                });
+            }
+
+            function handleQuizAnswer(selectedOption, correctOption) {
+                if (selectedOption === correctOption) {
+                    quizFeedbackElement.textContent = 'Correto!';
+                    quizFeedbackElement.className = 'mt-6 text-xl font-bold h-8 text-green-500';
+                    currentQuizIndex++;
+                    setTimeout(renderQuizQuestion, 1000);
+                } else {
+                    quizFeedbackElement.textContent = 'Incorreto! Você voltou ao início.';
+                    quizFeedbackElement.className = 'mt-6 text-xl font-bold h-8 text-red-500';
+                    setTimeout(() => {
+                        quizModal.classList.add('hidden');
+                        restartGame();
+                    }, 2000);
+                }
+            }
+
             function checkAnswer(itemType, binType) {
                 if (itemType === binType) {
                     score++;
                     showFeedback('Muito bem! Correto!', true);
                     generateNewTrashItem();
+
+                    if (score === 200) {
+                        startQuiz();
+                    }
                 } else {
                     score = Math.max(0, score - 1);
                     showFeedback('Ops! Tente de novo.', false);
@@ -320,6 +433,29 @@
                 feedbackContainer.appendChild(feedbackElement);
             }
             
+            const shareModal = document.getElementById('share-modal');
+            const copyLinkButton = document.getElementById('copy-link-button');
+            const copyFeedback = document.getElementById('copy-feedback');
+            const playAgainButton = document.getElementById('play-again-button');
+
+            function showSharePhase() {
+                shareModal.classList.remove('hidden');
+            }
+
+            copyLinkButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    copyFeedback.classList.remove('hidden');
+                    setTimeout(() => {
+                        copyFeedback.classList.add('hidden');
+                    }, 3000);
+                });
+            });
+
+            playAgainButton.addEventListener('click', () => {
+                shareModal.classList.add('hidden');
+                restartGame();
+            });
+
             function restartGame() {
                 score = 0;
                 scoreElement.textContent = score;
