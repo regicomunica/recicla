@@ -73,6 +73,8 @@
                 <p id="trash-name" class="mt-2 text-base font-semibold text-gray-600 h-6"></p>
             </div>
             <div class="text-center">
+                <h2 class="text-xl font-semibold text-gray-700">Tempo</h2>
+                <p id="timer" class="text-3xl font-bold text-blue-500 mb-2">00:00</p>
                 <h2 class="text-xl font-semibold text-gray-700">Pontuação</h2>
                 <p id="score" class="text-5xl font-bold text-emerald-500">0</p>
             </div>
@@ -122,6 +124,31 @@
                 <!-- Opções de resposta serão injetadas aqui -->
             </div>
             <p id="quiz-feedback" class="mt-6 text-xl font-bold h-8"></p>
+        </div>
+    </div>
+
+    <!-- Modal de Ranking (Intermediário) -->
+    <div id="ranking-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl transform transition-all my-8">
+            <h2 class="text-3xl font-bold text-purple-700 mb-2">🏆 Ranking Final 🏆</h2>
+            <p class="text-gray-600 mb-4">Seu tempo: <span id="final-time" class="font-bold text-xl text-blue-600"></span></p>
+
+            <div id="name-input-section" class="mb-6">
+                <input type="text" id="player-name" placeholder="Digite seu nome" class="w-full px-4 py-3 rounded-xl border-2 border-purple-200 focus:border-purple-500 focus:outline-none text-lg text-center mb-3">
+                <button id="save-score-button" class="w-full px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition-colors">
+                    Salvar Tempo
+                </button>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-4 max-h-60 overflow-y-auto mb-6">
+                <ul id="ranking-list" class="space-y-2 text-left">
+                    <!-- Itens do ranking serão injetados aqui -->
+                </ul>
+            </div>
+
+            <button id="continue-to-share-button" class="hidden w-full px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105">
+                Continuar
+            </button>
         </div>
     </div>
 
@@ -221,6 +248,7 @@
 
             const trashContainer = document.getElementById('trash-container');
             const scoreElement = document.getElementById('score');
+            const timerElement = document.getElementById('timer');
             const bins = document.querySelectorAll('.bin');
             const feedbackContainer = document.getElementById('feedback-container');
             const restartButton = document.getElementById('restart-button');
@@ -229,6 +257,29 @@
             let currentTrashItem = null;
             let draggedElement = null;
             let clone = null;
+
+            let timerInterval = null;
+            let secondsElapsed = 0;
+
+            function formatTime(totalSeconds) {
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            function startTimer() {
+                clearInterval(timerInterval);
+                secondsElapsed = 0;
+                timerElement.textContent = "00:00";
+                timerInterval = setInterval(() => {
+                    secondsElapsed++;
+                    timerElement.textContent = formatTime(secondsElapsed);
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+            }
 
             function generateNewTrashItem() {
                 trashContainer.innerHTML = '';
@@ -370,7 +421,8 @@
             function renderQuizQuestion() {
                 if (currentQuizIndex >= quizQuestions.length) {
                     quizModal.classList.add('hidden');
-                    showSharePhase();
+                    stopTimer();
+                    showRankingPhase();
                     return;
                 }
 
@@ -438,6 +490,95 @@
             const copyFeedback = document.getElementById('copy-feedback');
             const playAgainButton = document.getElementById('play-again-button');
 
+            const rankingModal = document.getElementById('ranking-modal');
+            const finalTimeSpan = document.getElementById('final-time');
+            const playerNameInput = document.getElementById('player-name');
+            const saveScoreButton = document.getElementById('save-score-button');
+            const rankingList = document.getElementById('ranking-list');
+            const continueToShareButton = document.getElementById('continue-to-share-button');
+            const nameInputSection = document.getElementById('name-input-section');
+
+            function showRankingPhase() {
+                rankingModal.classList.remove('hidden');
+                finalTimeSpan.textContent = formatTime(secondsElapsed);
+                renderRankingList();
+
+                // Show input section if it was hidden previously
+                nameInputSection.classList.remove('hidden');
+                continueToShareButton.classList.add('hidden');
+                playerNameInput.value = '';
+            }
+
+            function getRanking() {
+                const stored = localStorage.getItem('recyclingRanking');
+                return stored ? JSON.parse(stored) : [];
+            }
+
+            function saveToRanking(name, timeInSeconds) {
+                const ranking = getRanking();
+                ranking.push({ name, timeInSeconds, formattedTime: formatTime(timeInSeconds) });
+                ranking.sort((a, b) => a.timeInSeconds - b.timeInSeconds);
+                const top10 = ranking.slice(0, 10);
+                localStorage.setItem('recyclingRanking', JSON.stringify(top10));
+                return top10;
+            }
+
+            function renderRankingList() {
+                const ranking = getRanking();
+                rankingList.innerHTML = '';
+
+                if (ranking.length === 0) {
+                    rankingList.innerHTML = '<li class="text-center text-gray-500 py-2">Nenhum tempo registrado ainda.</li>';
+                    return;
+                }
+
+                ranking.forEach((entry, index) => {
+                    const li = document.createElement('li');
+
+                    let bgClass = 'bg-white';
+                    let textClass = 'text-gray-700';
+                    let medal = '';
+
+                    if (index === 0) {
+                        bgClass = 'bg-yellow-100 border-yellow-300';
+                        textClass = 'text-yellow-800 font-bold';
+                        medal = '🥇';
+                    } else if (index === 1) {
+                        bgClass = 'bg-gray-200 border-gray-400';
+                        textClass = 'text-gray-800 font-bold';
+                        medal = '🥈';
+                    } else if (index === 2) {
+                        bgClass = 'bg-orange-100 border-orange-300';
+                        textClass = 'text-orange-800 font-bold';
+                        medal = '🥉';
+                    }
+
+                    li.className = `flex justify-between items-center p-3 rounded-lg border ${bgClass} ${textClass}`;
+                    li.innerHTML = `
+                        <span class="flex items-center gap-2">
+                            <span class="w-6 text-center">${medal || (index + 1) + '.'}</span>
+                            <span>${entry.name}</span>
+                        </span>
+                        <span class="font-mono">${entry.formattedTime}</span>
+                    `;
+                    rankingList.appendChild(li);
+                });
+            }
+
+            saveScoreButton.addEventListener('click', () => {
+                const name = playerNameInput.value.trim() || 'Jogador Anônimo';
+                saveToRanking(name, secondsElapsed);
+                renderRankingList();
+
+                nameInputSection.classList.add('hidden');
+                continueToShareButton.classList.remove('hidden');
+            });
+
+            continueToShareButton.addEventListener('click', () => {
+                rankingModal.classList.add('hidden');
+                showSharePhase();
+            });
+
             function showSharePhase() {
                 shareModal.classList.remove('hidden');
             }
@@ -461,10 +602,12 @@
                 scoreElement.textContent = score;
                 feedbackContainer.innerHTML = '';
                 generateNewTrashItem();
+                startTimer();
             }
 
             restartButton.addEventListener('click', restartGame);
             generateNewTrashItem();
+            startTimer();
         });
     </script>
 </body>
